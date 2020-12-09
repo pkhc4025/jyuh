@@ -1,0 +1,166 @@
+<%@ page language="java" contentType="text/html;charset=euc-kr" %>
+<%@ page import="NiceID.Check.CPClient"%>
+
+<%
+    NiceID.Check.CPClient niceCheck = new  NiceID.Check.CPClient();
+    
+    String sSiteCode = "BT316";
+    String sSitePassword = "f2WhZB57TW0Y";
+    String sRequestNumber = niceCheck.getRequestNO(sSiteCode);
+  	session.setAttribute("REQ_SEQ" , sRequestNumber);
+	
+   	String sAuthType = "";      	// 없으면 기본 선택화면, M: 핸드폰, C: 신용카드, X: 공인인증서
+   	String popgubun 	= "N";		//Y : 취소버튼 있음 / N : 취소버튼 없음
+	String customize 	= "";		//없으면 기본 웹페이지 / Mobile : 모바일페이지
+	String sGender = ""; 			//없으면 기본 선택 값, 0 : 여자, 1 : 남자 
+	
+    String sReturnUrl = "http://www.test.co.kr/checkplus_success.jsp";      // 성공시 이동될 URL
+    String sErrorUrl = "http://www.test.co.kr/checkplus_fail.jsp";          // 실패시 이동될 URL
+
+    String sPlainData = "7:REQ_SEQ" + sRequestNumber.getBytes().length + ":" + sRequestNumber +
+                        "8:SITECODE" + sSiteCode.getBytes().length + ":" + sSiteCode +
+                        "9:AUTH_TYPE" + sAuthType.getBytes().length + ":" + sAuthType +
+                        "7:RTN_URL" + sReturnUrl.getBytes().length + ":" + sReturnUrl +
+                        "7:ERR_URL" + sErrorUrl.getBytes().length + ":" + sErrorUrl +
+                        "11:POPUP_GUBUN" + popgubun.getBytes().length + ":" + popgubun +
+                        "9:CUSTOMIZE" + customize.getBytes().length + ":" + customize + 
+						"6:GENDER" + sGender.getBytes().length + ":" + sGender;
+    
+    String sMessage = "";
+    String sEncData = null;
+    
+    int iReturn = niceCheck.fnEncode(sSiteCode, sSitePassword, sPlainData);
+    if( iReturn == 0 )
+    {
+        sEncData = niceCheck.getCipherData();
+    }
+    else if( iReturn == -1)
+    {
+        sMessage = "암호화 시스템 에러입니다.";
+    }    
+    else if( iReturn == -2)
+    {
+        sMessage = "암호화 처리오류입니다.";
+    }    
+    else if( iReturn == -3)
+    {
+        sMessage = "암호화 데이터 오류입니다.";
+    }    
+	/*
+    else if( iReturn == -9)
+    {
+        sMessage = "입력 데이터 오류입니다.";
+    } 
+	*/	
+    else
+    {
+        sMessage = "알수 없는 에러 입니다. iReturn : " + iReturn;
+    }
+%>
+
+<html>
+<head>
+	<title>신청서</title>
+	
+	<script language='javascript'>
+	window.name ="Parent_window";
+	
+	function fnPopup(){
+		window.open('', 'popupChk', 'width=500, height=550, top=100, left=100, fullscreen=no, menubar=no, status=no, toolbar=no, titlebar=yes, location=no, scrollbar=no');
+		document.form_chk.action = "https://nice.checkplus.co.kr/CheckPlusSafeModel/checkplus.cb";
+		document.form_chk.target = "popupChk";
+		document.form_chk.submit();
+	}
+	
+	function fsubmit() {
+		var u_name = document.getElementsByName("u_name")[0];
+		var u_birth = document.getElementsByName("u_birth")[0];
+		var u_phone_number = document.getElementsByName("u_phone_number")[0];
+		var u_position = document.getElementsByName("u_position")[0];
+		
+		if (u_name.value.length == 0) {
+			alert("성함을 입력해주세요");
+			u_name.focus();
+			return false;
+		} else if (u_birth.value.length == 0) {
+			alert("생년월일을 입력해주세요");
+			u_birth.focus();
+			return false;
+		}  else if (u_phone_number.value.length == 0) {
+			alert("연락처를 입력해주세요");
+			u_phone_number.focus();
+			return false;
+		}  else if (u_position.value.length == 0) {
+			alert("상세 주소를 입력해주세요");
+			u_position.focus();
+			return false;
+		} else {
+			// Success
+			return true;
+		}
+	}
+	</script>
+</head>
+<body>
+	<% if(sEncData == null){ %>
+		<%= sMessage %>
+	<% } else { %>
+		<!-- First Form -->
+		
+		
+		<form name="form_chk" method="post">
+			<div class="container">
+				<div class="row">
+					<table class="table table-striped" style="text-align: center; border: 1px solid #dddddd">
+					<thead>
+						<tr>
+							<th colspan="3" style="background-color: #eeeeee; text-align: center;">입단신청서</th>
+						</tr>
+					</thead>
+					<tbody>
+						<tr>
+							<td style="width: 20%;">성함</td>
+							<td colspan="2"><input type="text" class="form-control" placeholder="제목" name="u_name" maxlength="20" value=<%=content.title %>></td>
+						</tr>
+						<tr>
+							<td style="width: 20%;">생년월일</td>
+							<td colspan="2">
+								<%
+									Calendar cal = Calendar.getInstance(Locale.KOREAN);
+									SimpleDateFormat formatter = new SimpleDateFormat("yyyyMMdd");
+									String cDay = String.format("%04d-%02d-%02d", cal.get(Calendar.YEAR), cal.get(Calendar.MONTH) + 1,cal.get(Calendar.DAY_OF_MONTH));
+									
+								%>
+								<input type="date" class="form-control" placeholder="날짜" name="u_birth" max=<%=cDay%>>
+							</td>
+						</tr>
+						<tr>
+							<td style="width: 20%;">연락처</td>
+							<script>
+								function telEvent(obj) {
+									obj.value = obj.value.replace(/[^0-9]/g, "").replace(/(^02|^0505|^1[0-9]{3}|^0[0-9]{2})([0-9]+)?([0-9]{4})/,"$1-$2-$3").replace("--", "-");
+								}
+							</script>
+							<input type="tel" class="form-control" placeholder="ex) 010-1234-5678" name="u_phone_number" onKeyup="telEvent(this);" maxlength="14">		
+						</tr>
+						<tr>
+							<td style="width: 20%;">장소</td>
+							<td colspan="2"><input type="text" class="form-control" placeholder="장소" name="u_position" maxlength="30" value=<%=content.place %>></td>
+						</tr>
+					</tbody>
+				
+					
+					<input type="hidden" name="m" value="checkplusService">						<!-- 필수 데이타로, 누락하시면 안됩니다. -->
+					<input type="hidden" name="EncodeData" value="<%= sEncData %>">		<!-- 위에서 업체정보를 암호화 한 데이타입니다. -->	
+					
+					<input type="hidden" name="u_check" value="">
+				
+					<a href="javascript:fnPopup();">입당신청하기</a>
+				</div>
+			</div>
+		</form>
+	<% } %>
+	
+    </div>
+</body>
+</html>
